@@ -1,0 +1,248 @@
+﻿<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Canvas в HTML5</title>
+    </head>
+    <body>
+        <h1 id="tst_id">ТЕСТ</h1>
+        <div>
+            <button id="test">Test</button>
+        </div>
+        <canvas id="mainCanvas" style="border: 1px solid #000; filter:blur(0px)">
+            Картинка
+        </canvas>
+        <canvas id="mapCanvas" style="border: 1px solid #000; filter:blur(0px)">
+            Карта
+        </canvas>
+    </body>
+
+
+    <script>
+
+        // Создание запроса на анимацию
+            (function () {
+                var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                    window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+                window.requestAnimationFrame = requestAnimationFrame;
+            })();
+        
+        // Стартовые переменные
+        var main_canvas_width = 640;
+        var main_canvas_height = 480;
+        var map_canvas_width = 512;
+        var map_canvas_height = 512;
+
+        var main_canvas = document.getElementById("mainCanvas");
+        var main_ct = main_canvas.getContext("2d");
+        var map_canvas = document.getElementById("mapCanvas");
+        var map_ct= map_canvas.getContext("2d");
+
+        main_canvas.width = main_canvas_width;
+        main_canvas.height = main_canvas_height;
+        map_canvas.width = map_canvas_width;
+        map_canvas.height = map_canvas_height;
+
+
+        // Переменные
+        var map_img = new Image();
+        var map_imageData; // Данные картинки (не сам image). Все данные о пикселях хранятся в массиве imageData.data
+        var map_array = []; // массив карты
+        var fov = 90; // Угол обзора в градусах
+        var fov_rays_count = 640; // количество лучей в угле обзора
+        var fov_rays_array = []; // длины этих лучей + цвета в точках упора
+        var width_multiplier = main_canvas_width / fov_rays_count; // множитель ширины картинки
+        var current_player_angle = 0; // текущее положение взгляда игрока
+        var current_player_x = 100; // текущее положение игрока X
+        var current_player_y = 100; // текущее положение игрока Y
+
+        // Рисование карты
+        (function drawMap() {
+        
+            map_img.src = "map.png";
+            map_img.onload = function() {                 
+                map_ct.drawImage(map_img, 0, 0);
+                readMapToArray();
+            };
+            function readMapToArray() { // Считаем карту в массив:
+                var map_imageData = map_ct.getImageData(0, 0, map_canvas_width, map_canvas_height);
+                //for (var i = 0; i < map_imageData.data.length; i += 4) {
+                    var i = 0;
+                    for (var x = 0; x < map_canvas_width; x+=1) {
+                        map_array[x] = [];
+                        for (var y = 0; y < map_canvas_height; y+=1) {
+                            red = map_imageData.data[i]; // получаем компоненту красного цвета
+                            green = map_imageData.data[i + 1];  // получаем компоненту зеленого цвета
+                            blue = map_imageData.data[i + 2];   // получаем компоненту синего цвета 
+                            map_array[x][y] = ( {red, green, blue, x, y} );
+                            i+=4;
+                        }
+                    }
+                   
+                    //if (red == 0 && green == 255 && blue == 255) {
+                    //    console.log(map_array[i]);
+                    //}
+                //}
+            }
+        })();
+
+        
+        // Рисование игрока (и угол в градусах, 0 - вправо):
+        function drawPlayer(player_x, player_y, player_angle) {
+            current_player_angle = player_angle;
+            current_player_x = player_x;
+            current_player_y = player_y;
+            map_ct.clearRect(0, 0, map_canvas_width, map_canvas_height); // стираем холст
+            map_ct.drawImage(map_img, 0, 0); // рисуем карту
+            // рисуем игрока           
+            player_radius = 3; 
+            map_ct.strokeStyle = "red";
+            map_ct.fillStyle = "red";
+            map_ct.beginPath();
+            map_ct.moveTo(player_x, player_y); 
+            map_ct.rect(player_x -player_radius, player_y - player_radius, 2*player_radius, 2*player_radius); // создаем точку игрока
+            map_ct.fill(); // сама заливка игрока
+            //drawAngle(player_x, player_y, player_angle); // рисуем путь
+            drawFov(player_x, player_y, player_angle); // рисуем угол обзора  
+            draw3dPseudo(); // рисуем 3д      
+        }
+
+
+        // Рисуем луч обзора 
+        function drawAngle(player_x, player_y, player_angle) {
+            map_ct.strokeStyle = "rgba(20,20,100,0.1)";
+            map_ct.beginPath();
+            map_ct.moveTo(player_x, player_y); 
+            var player_angle_length = 0; // длина линии взгляда. Вычисляется до упирания в стену  
+            var _x = player_x;
+            var _y = player_y; 
+            do {
+                player_angle_x = player_x + player_angle_length*Math.cos(player_angle * (Math.PI / 180)); // координиата точки взгляда
+                player_angle_y = player_y + player_angle_length*Math.sin(player_angle * (Math.PI / 180));// координиата точки взгляда
+                _x = Math.floor(player_angle_x);
+                _y = Math.floor(player_angle_y);
+                map_ct.moveTo(player_angle_x, player_angle_y); 
+                player_angle_length +=1;
+            }  while (map_array[_y][_x].green == 255 && map_array[_y][_x].blue == 255 )  
+            map_ct.lineTo(player_x, player_y);
+            map_ct.closePath();
+            map_ct.stroke(); // сама линия   
+            var player_angle_lenght = Math.sqrt(Math.pow(player_angle_x - player_x, 2) + Math.pow(player_angle_y - player_y, 2));
+            var player_angle_color = map_array[_y][_x];
+            return { player_angle, player_angle_lenght, player_angle_color };
+        }
+
+
+        // Рисуем сектор обзора + заносим его в массив
+        function drawFov(player_x, player_y, player_angle) {
+            //var fov = 90; // Угол обзора в градусах
+            // var fov_rays_count = 256; // количество лучей в угле обзора
+            //var fov_rays_lenghts_array = []; // длины этих лучей
+
+            let delta_angle = fov / fov_rays_count; // дельта шага нарезки сектора по вертикали
+            //console.log('delta_angle = ' + delta_angle);
+            //console.log('player_x = ' + player_x);
+            //console.log('player_y = ' + player_y);
+            fov_rays_array = [];
+            for (var x = 0; x < fov; x+=delta_angle) {
+                let fov_ray = drawAngle(player_x, player_y, player_angle - (fov/2) + x);
+                fov_ray.player_angle_central = player_angle;
+                fov_rays_array.push( fov_ray );
+            }
+            //console.log('x = ' + x);
+        }
+
+
+        // Вывод лучей на экран (3д-кадр)
+        function draw3dPseudo() {
+            main_ct.clearRect(0, 0, main_canvas_width, main_canvas_height); // стираем холст
+            //var width_multiplier = 1;
+
+            for (var x = 0; x < fov_rays_array.length; x+=1) {
+                main_ct.beginPath();                
+                let red = fov_rays_array[x].player_angle_color.red;
+                let green = fov_rays_array[x].player_angle_color.green;
+                let blue = fov_rays_array[x].player_angle_color.blue;
+                //let wall_real_height = (main_canvas_height * 50) / fov_rays_array[x].player_angle_lenght; // реальная высота отрезка стены - обратно пропорциональная длине отрезка player_angle_lenght
+                let wall_real_height = (main_canvas_height * 50) / (fov_rays_array[x].player_angle_lenght * Math.cos( (fov_rays_array[x].player_angle - fov_rays_array[x].player_angle_central) * (Math.PI / 180))); // реальная высота отрезка стены - обратно пропорциональная  длине отрезка player_angle_lenght
+                main_ct.strokeStyle = "rgb(" + red + "," + green + "," + blue + ")";
+                main_ct.moveTo(x*width_multiplier, (main_canvas_height / 2) - (wall_real_height / 2 )); // двигаемся в начало отрезка
+                main_ct.lineTo(x*width_multiplier, (main_canvas_height / 2) + (wall_real_height / 2 )); // рисуем линию
+                main_ct.stroke(); // сама линия 
+                main_ct.closePath();
+            }                         
+        }
+
+
+        // Перемещение игрока (телепорт по карте)
+            map_canvas.addEventListener("mousedown", function (e) { // Обработчик нажатия мыши
+                player_x = e.pageX - this.offsetLeft;
+                player_y = e.pageY - this.offsetTop;
+                drawPlayer(player_x, player_y, current_player_angle)
+            });
+
+        // Перемещение игрока (нажатия клавиш)
+        function movePlayer(e)
+        {
+            console.log(e.keyCode);
+            switch(e.keyCode){           
+            case 37:  // если нажата клавиша влево
+                drawPlayer(current_player_x, current_player_y, current_player_angle - 5);
+                break;
+            case 38:   // если нажата клавиша вверх
+                drawPlayer(current_player_x, current_player_y - 5, current_player_angle); 
+                break;
+            case 39:   // если нажата клавиша вправо
+                drawPlayer(current_player_x, current_player_y, current_player_angle + 5); 
+                break;
+            case 40:   // если нажата клавиша вниз
+                drawPlayer(current_player_x, current_player_y + 5, current_player_angle);
+                break;
+            }
+        }
+        addEventListener("keydown", movePlayer);
+
+
+
+// ============================================================================================================================
+        // Шаг анимации
+        function step(timestamp) {
+            var progress = timestamp;
+           
+            // Тут вызываем функции отрисовок:
+
+              //drawPlayer(100, 100, Math.floor(progress/50));
+
+
+            ///if (progress < 10000) {
+            if (progress < 30000) {
+                requestAnimationFrame(step);
+            }
+        }
+
+// ============================================================================================================================
+
+
+
+
+
+    
+
+        // // Шаг анимации
+        // function step(timestamp) {
+        //         var progress = timestamp;
+        //         var x = Math.floor(timestamp/10);
+        //         // Тут вызываем функции отрисовок:
+        //         // drawFrame(x);
+        //         drawFigure();
+        //         if (progress < 1000) {
+        //             // console.log(timestamp);
+        //             requestAnimationFrame(step);
+        //         }
+        //     }
+        
+        // Запуск первого кадра
+        requestAnimationFrame(step);
+
+    </script>
+</html>
