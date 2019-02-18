@@ -184,19 +184,30 @@
         // Перемещение игрока (нажатия клавиш)
         function movePlayer(e)
         {
+            let move_multiplier = 2;
             console.log(e.keyCode);
             switch(e.keyCode){           
             case 37:  // если нажата клавиша влево
-                drawPlayer(current_player_x, current_player_y, current_player_angle - 5);
+                drawPlayer(current_player_x, current_player_y, current_player_angle - move_multiplier);
                 break;
             case 38:   // если нажата клавиша вверх
-                drawPlayer(current_player_x, current_player_y - 5, current_player_angle); 
+                if (map_array[current_player_y][current_player_x].green == 255 && map_array[current_player_y][current_player_x].blue == 255 ) {
+                    drawPlayer(current_player_x, current_player_y - move_multiplier, current_player_angle); 
+                }   
+                else {
+                    drawPlayer(current_player_x, current_player_y + move_multiplier, current_player_angle);
+                }            
                 break;
             case 39:   // если нажата клавиша вправо
-                drawPlayer(current_player_x, current_player_y, current_player_angle + 5); 
+                drawPlayer(current_player_x, current_player_y, current_player_angle + move_multiplier); 
                 break;
             case 40:   // если нажата клавиша вниз
-                drawPlayer(current_player_x, current_player_y + 5, current_player_angle);
+                if (map_array[current_player_y][current_player_x].green == 255 && map_array[current_player_y][current_player_x].blue == 255 ) {
+                    drawPlayer(current_player_x, current_player_y + move_multiplier, current_player_angle); 
+                }
+                else {
+                    drawPlayer(current_player_x, current_player_y - move_multiplier, current_player_angle); 
+                }
                 break;
             }
         }
