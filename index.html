@@ -28,10 +28,12 @@
             })();
         
         // Стартовые переменные
-        var main_canvas_width = 800;
+        var main_canvas_width = 600;
         var main_canvas_height = 480;
         var map_canvas_width = 512;
         var map_canvas_height = 512;
+        var crosshair_x = main_canvas_width/2;
+        var crosshair_y = main_canvas_height/2;
 
         var main_canvas = document.getElementById("mainCanvas");
         var main_ct = main_canvas.getContext("2d");
@@ -48,13 +50,14 @@
         var map_img = new Image();
         var map_imageData; // Данные картинки (не сам image). Все данные о пикселях хранятся в массиве imageData.data
         var map_array = []; // массив карты
-        var fov = 90; // Угол обзора в градусах
-        var fov_rays_count = 400; // количество лучей в угле обзора
+        var fov = 70; // Угол обзора в градусах
+        var fov_rays_count = 300; // количество лучей в угле обзора
         var fov_rays_array = []; // длины этих лучей + цвета в точках упора
         var width_multiplier = main_canvas_width / fov_rays_count; // множитель ширины картинки
         var current_player_angle = 0; // текущее положение взгляда игрока
         var current_player_x = 100; // текущее положение игрока X
         var current_player_y = 100; // текущее положение игрока Y
+        var player_sit_down = 0; // 1 = игрок сидит, 0 - стоит
         var move_multiplier = 2; // Множитель скорости движения и поворота игрока
 
         // Рисование карты
@@ -116,14 +119,14 @@
             map_ct.lineWidth = 0.5;
             map_ct.beginPath();
             map_ct.moveTo(player_x, player_y); 
-            var player_angle_length = 0; // длина линии взгляда. Вычисляется до упирания в стену  
+            var player_angle_length = 0; // длина линии взгляда. Вычисляется до "упирания" в стену  
             var _x = player_x;
             var _y = player_y; 
             do {
                 player_angle_x = player_x + player_angle_length*Math.cos(player_angle * (Math.PI / 180)); // координиата точки взгляда
                 player_angle_y = player_y + player_angle_length*Math.sin(player_angle * (Math.PI / 180));// координиата точки взгляда
-                _x = Math.floor(player_angle_x);
-                _y = Math.floor(player_angle_y);
+                _x = Math.round(player_angle_x);
+                _y = Math.round(player_angle_y);
                 map_ct.moveTo(player_angle_x, player_angle_y); 
                 player_angle_length +=1;
             }  while (map_array[_y][_x].green == 255 && map_array[_y][_x].blue == 255 )  
@@ -132,6 +135,7 @@
             map_ct.stroke(); // сама линия   
             var player_angle_lenght = Math.sqrt(Math.pow(player_angle_x - player_x, 2) + Math.pow(player_angle_y - player_y, 2));
             var player_angle_color = map_array[_y][_x];
+            player_angle_lenght = Math.floor(player_angle_lenght);
             return { player_angle, player_angle_lenght, player_angle_color };
         }
 
@@ -147,12 +151,24 @@
             }
         }
 
+        // Рисование перекрестия прицела
+        function drawCrosshair(crosshair_x, crosshair_y) {
+            let size = 10;
+            main_ct.lineWidth = 1;
+            main_ct.strokeStyle = "red";
+            main_ct.beginPath();
+                main_ct.moveTo(crosshair_x - size, crosshair_y); 
+                main_ct.lineTo(crosshair_x + size, crosshair_y); 
+                main_ct.moveTo(crosshair_x, crosshair_y - size); 
+                main_ct.lineTo(crosshair_x, crosshair_y + size); 
+                main_ct.stroke(); // сама линия 
+            main_ct.closePath();
+        }
 
         // Вывод лучей на экран (3д-кадр)
         function draw3dPseudo() {
             //main_ct.clearRect(0, 0, main_canvas_width, main_canvas_height); // стираем холст
             drawFloorAndCelling ()
-            //var width_multiplier = 5; 
             main_ct.lineWidth = width_multiplier+1;          
             for (var x = 0; x < fov_rays_array.length; x+=1) {
                 main_ct.beginPath();                
@@ -165,13 +181,24 @@
                 //let blue = Math.floor(fov_rays_array[x].player_angle_color.blue / _mlplr);
                 
                 //let wall_real_height = (main_canvas_height * 5) / fov_rays_array[x].player_angle_lenght; // реальная высота отрезка стены - обратно пропорциональная длине отрезка player_angle_lenght
-                let wall_real_height = (main_canvas_height *50) / (fov_rays_array[x].player_angle_lenght * Math.cos( (fov_rays_array[x].player_angle_central - fov_rays_array[x].player_angle) * (Math.PI / 180))); // реальная высота отрезка стены - обратно пропорциональная  длине отрезка player_angle_lenght
+                let wall_real_height = ( (main_canvas_height*50) / (fov_rays_array[x].player_angle_lenght * Math.cos( (fov_rays_array[x].player_angle_central - fov_rays_array[x].player_angle) * (Math.PI / 180) ) ) ); // реальная высота отрезка стены - обратно пропорциональная  длине отрезка player_angle_lenght
                 main_ct.strokeStyle = "rgb(" + red + "," + green + "," + blue + ")";
-                main_ct.moveTo(x*width_multiplier, (main_canvas_height / 2) - (wall_real_height / 2 )); // двигаемся в начало отрезка
-                main_ct.lineTo(x*width_multiplier, (main_canvas_height / 2) + (wall_real_height / 2 )); // рисуем линию
+                if (player_sit_down == 1) { // если игрок сидит - рисуем картинку со взгляда от пола
+                    _temp_y = (main_canvas_height / 2) - (wall_real_height / 1.2);
+                    main_ct.moveTo(x*width_multiplier,  _temp_y); // двигаемся в начало отрезка
+                }
+                else {
+                    _temp_y = (main_canvas_height / 2) - (wall_real_height / 1.6);
+                    main_ct.moveTo(x*width_multiplier,  _temp_y); // двигаемся в начало отрезка                   
+                }    
+                main_ct.lineTo(x*width_multiplier, _temp_y + wall_real_height ); // рисуем линию            
                 main_ct.stroke(); // сама линия 
-                main_ct.closePath();
-            }                         
+                main_ct.closePath();               
+            }
+            drawCrosshair(crosshair_x, crosshair_y); 
+            function  smoothingWall(wall_real_height_array) { // Сглаживание "пилы" на стене методом квадратичной кривой
+
+            }                       
         }
 
         // Заливка пола и потолка
@@ -214,16 +241,25 @@
             case 40:   // если нажата клавиша вниз
                 moveToAngle(-move_multiplier)
                 break;
+            case 17:
+                player_sit_down = 1;
+                break;
+            case 16:
+                player_sit_down = 0;
+                break;
             };
             function moveToAngle(_move_multiplier){ // движение игрока по направлению вгляда
-                if (map_array[Math.floor(current_player_y)][Math.floor(current_player_x)].green == 255 && map_array[Math.floor(current_player_y)][Math.floor(current_player_x)].blue == 255 ) {
-                    current_player_x = current_player_x + _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
-                    current_player_y = current_player_y + _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y  
+                let _current_player_x = current_player_x + 2 *_move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
+                let _current_player_y = current_player_y + 2 *_move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y 
+                if ( map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].green == 255 && map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].blue == 255 ) 
+                {
+                    current_player_x = _current_player_x;
+                    current_player_y = _current_player_y;
                     //drawPlayer(to_x, to_y, current_player_angle);                   
                 }   
                 else {
-                    current_player_x = current_player_x - 2* _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
-                    current_player_y = current_player_y - 2*_move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y  
+                    current_player_x = current_player_x - _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); 
+                    current_player_y = current_player_y - _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); 
                     //drawPlayer(to_x, to_y, current_player_angle);       
                 }   
             }
