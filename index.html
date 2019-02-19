@@ -15,6 +15,10 @@
         <canvas id="mapCanvas" style="border: 1px solid #000; filter:blur(0px)">
             Карта
         </canvas>
+        <br>
+        <canvas id="mapTextureCanvas" style="border: 1px solid #000; filter:blur(0px)">
+            Карта
+        </canvas>
     </body>
 
 
@@ -28,26 +32,43 @@
             })();
         
         // Стартовые переменные
-        var main_canvas_width = 600;
-        var main_canvas_height = 480;
-        var map_canvas_width = 512;
-        var map_canvas_height = 512;
-        var crosshair_x = main_canvas_width/2;
-        var crosshair_y = main_canvas_height/2;
-
         var main_canvas = document.getElementById("mainCanvas");
         var main_ct = main_canvas.getContext("2d");
         var map_canvas = document.getElementById("mapCanvas");
         var map_ct= map_canvas.getContext("2d");
+        var map_texture_canvas = document.getElementById("mapTextureCanvas");
+        var map_texture_ct = map_texture_canvas.getContext("2d");
+
+        // Размеры canvas
+        var main_canvas_width = 600;
+        var main_canvas_height = 480;
+        var map_canvas_width = 512;
+        var map_canvas_height = 512;
+
+        // Размеры текстур:
+        var map_texture_size_x = 64; // размер текстуры по x
+        var map_texture_size_y = map_texture_size_x; // размер текстуры по y
+        var map_texture_count = 6; // количество текстур
+        var map_texture_canvas_width = map_texture_count * map_texture_size_y;
+        var map_texture_canvas_height = map_texture_size_x;
+
+        //Прицел:
+        var crosshair_x = main_canvas_width/2; // Прицел x координата
+        var crosshair_y = main_canvas_height/2; // прицел y координата
+
+        
 
         main_canvas.width = main_canvas_width;
         main_canvas.height = main_canvas_height;
         map_canvas.width = map_canvas_width;
         map_canvas.height = map_canvas_height;
+        map_texture_canvas.width = map_texture_canvas_width;
+        map_texture_canvas.height = map_texture_canvas_height;
 
 
         // Переменные
-        var map_img = new Image();
+        var map_img = new Image(); // карта
+        var map_texture_img = new Image(); // текстуры карты
         var map_imageData; // Данные картинки (не сам image). Все данные о пикселях хранятся в массиве imageData.data
         var map_array = []; // массив карты
         var fov = 70; // Угол обзора в градусах
@@ -60,15 +81,22 @@
         var player_sit_down = 0; // 1 = игрок сидит, 0 - стоит
         var move_multiplier = 2; // Множитель скорости движения и поворота игрока
 
-        // Рисование карты
-        (function drawMap() {
+        // Рисование карты + подгрузка текстур
+        (function initLevel() {
         
             map_img.src = "map.png";
-            map_img.onload = function() {                 
+            map_img.onload = function() {                
                 map_ct.drawImage(map_img, 0, 0);
-                readMapToArray();
-                // Запуск первого кадра
-                requestAnimationFrame(step);
+                readMapToArray();               
+                requestAnimationFrame(step); // Запуск первого кадра анимации
+            }; 
+            map_texture_img.src = "map_texture.png";
+            map_texture_img.onload = function() {              
+                map_texture_ct.drawImage(map_texture_img, 0, 0);
+                var articleDiv = document.querySelector("body");
+                var elem = document.createElement("div");
+                elem.textContent = "Привет мир";
+                articleDiv.appendChild(elem);
             };
             function readMapToArray() { // Считаем карту в массив:
                 var map_imageData = map_ct.getImageData(0, 0, map_canvas_width, map_canvas_height);
