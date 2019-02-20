@@ -5,9 +5,9 @@
         <title>Canvas в HTML5</title>
     </head>
     <body>
-        <h1 id="tst_id">Тест псевдо-3D</h1>
+        <h1 id="tst_id">3D-Pseudo test</h1>
         <div>
-            <a>Ходьба: стрелки, присесть: ctrl, встать: shift</a>
+            <a>Ходьба: W A S D, присесть/встать: CTRL</a>
         </div>
         <canvas id="mainCanvas" style="border: 1px solid #000; filter:blur(0px)">
             Картинка
@@ -108,7 +108,7 @@
                 //elem.textContent = "Привет мир";
                 //articleDiv.appendChild(elem);
             };
-            function readMapToArray() { // Считаем карту в массив:
+            function readMapToArray222() { // Считаем карту в массив:
                 var map_imageData = map_ct.getImageData(0, 0, map_canvas_width, map_canvas_height);
                 var i = 0;
                 for (var x = 0; x < map_canvas_width; x+=1) {
@@ -118,6 +118,20 @@
                         green = map_imageData.data[i + 1];  // получаем компоненту зеленого цвета
                         blue = map_imageData.data[i + 2];   // получаем компоненту синего цвета 
                         map_array[x][y] = ( {red, green, blue, x, y} );
+                        i+=4;
+                    }
+                }
+            }
+            function readMapToArray() { // Считаем карту в массив:
+                var map_imageData = map_ct.getImageData(0, 0, map_canvas_width, map_canvas_height);
+                var i = 0;
+                for (var y = 0; y < map_canvas_height; y++) {
+                    map_array[y] = [];
+                    for (var x = 0; x < map_canvas_width; x++) {
+                        red = map_imageData.data[i]; // получаем компоненту красного цвета
+                        green = map_imageData.data[i + 1];  // получаем компоненту зеленого цвета
+                        blue = map_imageData.data[i + 2];   // получаем компоненту синего цвета 
+                        map_array[y][x] = ( {red, green, blue, x, y} );
                         i+=4;
                     }
                 }
@@ -267,19 +281,40 @@
             function moveToAngle(_move_multiplier){ // движение игрока по направлению вгляда
                 let _current_player_x = current_player_x + _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
                 let _current_player_y = current_player_y + _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y 
-                if ( 
-                    map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].green == 255 && map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].blue == 255 &&
-                    map_array[Math.ceil(current_player_y + player_radius)][Math.ceil(current_player_x + player_radius)].green == 255 && map_array[Math.ceil(current_player_y + player_radius)][Math.ceil(current_player_x + player_radius)].blue == 255 &&
-                    map_array[Math.ceil(current_player_y - player_radius)][Math.ceil(current_player_x - player_radius)].green == 255 && map_array[Math.ceil(current_player_y - player_radius)][Math.ceil(current_player_x - player_radius)].blue == 255
-                    ) 
-                {
-                    current_player_x = _current_player_x;
-                    current_player_y = _current_player_y;                 
-                }   
-                else {
-                    current_player_x = current_player_x - _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); 
-                    current_player_y = current_player_y - _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180));       
-                } 
+
+                // идем в точку
+                current_player_x = _current_player_x;
+                current_player_y = _current_player_y; 
+
+                // если попали в стену - вылетаем в ближайшую не занятую точку
+                let b_current_player_x = Math.round(current_player_x);
+                let b_current_player_y = Math.round(current_player_y);
+                if (map_array[b_current_player_y][b_current_player_x].green != 255 && map_array[b_current_player_y][b_current_player_x].blue != 255) {
+                    let _clear_floor_point = searchClearFloor(current_player_x, current_player_y, Math.floor(map_canvas_width / 2));
+                    current_player_x = _clear_floor_point.x;
+                    current_player_y = _clear_floor_point.y;
+                }
+                       
+                function searchClearFloor(x, y, r) { // поиск ближайшей свободнйо от стен точки. x, y - текущие координаты, r - радиус поиска
+                    x = Math.round(x);
+                    y = Math.round(y);
+                    let _r = 0;
+                    let _x = x;
+                    let _y = y;
+                    for (_r = 0; _r<=r; _r++) {
+                        for (_y = y-_r; _y <= y+_r; _y++) {
+                            for (_x = x-_r; _x <= x+_r; _x++) { 
+                                if (_x <= 0)  _x = 0; // чтобы не выскакивало за границу карты                           
+                                if (_y <= 0)  _y = 0; // чтобы не выскакивало за границу карты  
+                                if (_x >= map_canvas_width)  _x = map_canvas_width-1; // чтобы не выскакивало за границу карты                           
+                                if (_y >= map_canvas_height)  _y = map_canvas_height-1; // чтобы не выскакивало за границу карты                                
+                                if (map_array[_y][_x].green == 255 && map_array[_y][_x].blue == 255) {
+                                    return map_array[_y][_x];
+                                }
+                            };
+                        };
+                    };    
+                };
             }
 
          };      
