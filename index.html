@@ -261,14 +261,8 @@
             map_canvas.addEventListener("mousedown", function (e) { // Обработчик нажатия мыши
                 current_player_x = e.pageX - this.offsetLeft;
                 current_player_y = e.pageY - this.offsetTop;
-                // если попали в стену - вылетаем в ближайшую не занятую точку
-                let b_current_player_x = Math.round(current_player_x);
-                let b_current_player_y = Math.round(current_player_y);
-                if (map_array[b_current_player_y][b_current_player_x].green != 255 && map_array[b_current_player_y][b_current_player_x].blue != 255) {
-                    let _clear_floor_point = searchClearFloor(current_player_x, current_player_y, Math.floor(map_canvas_width / 2));
-                    current_player_x = _clear_floor_point.x;
-                    current_player_y = _clear_floor_point.y;
-                }
+                // возвращем из стены, если попали в неё
+                returnPlayerFromWall();
             });
 
         // Перемещение игрока обычное 
@@ -293,16 +287,22 @@
                 current_player_x = _current_player_x;
                 current_player_y = _current_player_y; 
 
-                // если попали в стену - вылетаем в ближайшую не занятую точку
-                let b_current_player_x = Math.round(current_player_x);
-                let b_current_player_y = Math.round(current_player_y);
-                if (map_array[b_current_player_y][b_current_player_x].green != 255 && map_array[b_current_player_y][b_current_player_x].blue != 255) {
-                    let _clear_floor_point = searchClearFloor(current_player_x, current_player_y, Math.floor(map_canvas_width / 2));
-                    current_player_x = _clear_floor_point.x;
-                    current_player_y = _clear_floor_point.y;
-                }
-                       
-                function searchClearFloor(x, y, r) { // поиск ближайшей свободнйо от стен точки. x, y - текущие координаты, r - радиус поиска
+                // возвращем из стены, если попали в неё
+                returnPlayerFromWall();
+            }
+
+         };      
+
+        // Возврат игрока из стены в случае попадания в неё
+        function returnPlayerFromWall() {
+            let b_current_player_x = Math.round(current_player_x);
+            let b_current_player_y = Math.round(current_player_y);
+            if (map_array[b_current_player_y][b_current_player_x].green != 255 && map_array[b_current_player_y][b_current_player_x].blue != 255) {
+                let _clear_floor_point = searchClearFloor(current_player_x, current_player_y, Math.floor(map_canvas_width / 2));
+                current_player_x = _clear_floor_point.x;
+                current_player_y = _clear_floor_point.y;
+            }
+            function searchClearFloor(x, y, r) { // поиск ближайшей свободнйо от стен точки. x, y - текущие координаты, r - радиус поиска
                     x = Math.round(x);
                     y = Math.round(y);
                     let _r = 0;
@@ -322,10 +322,7 @@
                         };
                     };    
                 };
-            }
-
-         };      
-
+        }
 
         // Нажатия клавиш
         function keysDown(e) {
