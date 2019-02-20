@@ -71,15 +71,21 @@
         var map_texture_img = new Image(); // текстуры карты
         var map_imageData; // Данные картинки (не сам image). Все данные о пикселях хранятся в массиве imageData.data
         var map_array = []; // массив карты
-        var fov = 70; // Угол обзора в градусах
+        var fov = 60; // Угол обзора в градусах
         var fov_rays_count = 300; // количество лучей в угле обзора
         var fov_rays_array = []; // длины этих лучей + цвета в точках упора
         var width_multiplier = main_canvas_width / fov_rays_count; // множитель ширины картинки
         var current_player_angle = 0; // текущее положение взгляда игрока
         var current_player_x = 100; // текущее положение игрока X
         var current_player_y = 100; // текущее положение игрока Y
-        var player_sit_down = 0; // 1 = игрок сидит, 0 - стоит
         var move_multiplier = 2; // Множитель скорости движения и поворота игрока
+        var player_sit_down = 0; // 1 = игрок сидит, 0 - стоит
+        var player_camera_height = 1.6; // высота камеры от земли. Стоя 1.6, сидя 1.2     
+        var player_move_f = 0; // 0 - игрок стоит, 1 - движется вперед
+        var player_move_b = 0; // 0 - игрок стоит, 1 - движется назад
+        var player_turn_r = 0; // 0 - игрок стоит, 1 - поворачивает вправо
+        var player_turn_l = 0; // 0 - игрок стоит, 1 - поворачивает влево
+
 
         // Рисование карты + подгрузка текстур
         (function initLevel() {
@@ -93,10 +99,10 @@
             map_texture_img.src = "map_texture.png";
             map_texture_img.onload = function() {              
                 map_texture_ct.drawImage(map_texture_img, 0, 0);
-                var articleDiv = document.querySelector("body");
-                var elem = document.createElement("div");
-                elem.textContent = "Привет мир";
-                articleDiv.appendChild(elem);
+                //var articleDiv = document.querySelector("body");
+                //var elem = document.createElement("div");
+                //elem.textContent = "Привет мир";
+                //articleDiv.appendChild(elem);
             };
             function readMapToArray() { // Считаем карту в массив:
                 var map_imageData = map_ct.getImageData(0, 0, map_canvas_width, map_canvas_height);
@@ -159,7 +165,7 @@
             map_ct.stroke(); // сама линия   
             var player_angle_lenght = Math.sqrt(Math.pow(player_angle_x - player_x, 2) + Math.pow(player_angle_y - player_y, 2));
             var player_angle_color = map_array[_y][_x];
-            player_angle_lenght = Math.floor(player_angle_lenght);
+            //player_angle_lenght = Math.floor(player_angle_lenght);
             return { player_angle, player_angle_lenght, player_angle_color };
         }
 
@@ -193,7 +199,7 @@
         function draw3dPseudo() {
             //main_ct.clearRect(0, 0, main_canvas_width, main_canvas_height); // стираем холст
             drawFloorAndCelling ()
-            main_ct.lineWidth = width_multiplier+1;          
+            main_ct.lineWidth = width_multiplier+1;                 
             for (var x = 0; x < fov_rays_array.length; x+=1) {
                 main_ct.beginPath();                
                 let red = fov_rays_array[x].player_angle_color.red;
@@ -206,20 +212,15 @@
                 
                 //let wall_real_height = (main_canvas_height * 5) / fov_rays_array[x].player_angle_lenght; // реальная высота отрезка стены - обратно пропорциональная длине отрезка player_angle_lenght
                 let wall_real_height = ( (main_canvas_height*50) / (fov_rays_array[x].player_angle_lenght * Math.cos( (fov_rays_array[x].player_angle_central - fov_rays_array[x].player_angle) * (Math.PI / 180) ) ) ); // реальная высота отрезка стены - обратно пропорциональная  длине отрезка player_angle_lenght
-                main_ct.strokeStyle = "rgb(" + red + "," + green + "," + blue + ")";
-                if (player_sit_down == 1) { // если игрок сидит - рисуем картинку со взгляда от пола
-                    _temp_y = (main_canvas_height / 2) - (wall_real_height / 1.2);
-                    main_ct.moveTo(x*width_multiplier,  _temp_y); // двигаемся в начало отрезка
-                }
-                else {
-                    _temp_y = (main_canvas_height / 2) - (wall_real_height / 1.6);
-                    main_ct.moveTo(x*width_multiplier,  _temp_y); // двигаемся в начало отрезка                   
-                }    
-                main_ct.lineTo(x*width_multiplier, _temp_y + wall_real_height ); // рисуем линию            
-                main_ct.stroke(); // сама линия 
+                main_ct.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
+                _temp_y = (main_canvas_height / 2) - (wall_real_height / player_camera_height); 
+                main_ct.rect(x*width_multiplier,  _temp_y, width_multiplier, wall_real_height); // рисуем вертикальный прямоугольник стены         
+                //main_ct.stroke(); // сама линия 
+                main_ct.fill(); // сама заливка 
                 main_ct.closePath();               
             }
             drawCrosshair(crosshair_x, crosshair_y); 
+            
             function  smoothingWall(wall_real_height_array) { // Сглаживание "пилы" на стене методом квадратичной кривой
 
             }                       
@@ -250,28 +251,59 @@
         function movePlayer(e)
         {
             //console.log(e.keyCode);
-            switch(e.keyCode){           
-            case 37:  // если нажата клавиша влево
+            switch(e.keyCode){    
+            case 87:   // если нажата клавиша W             
+                moveToAngle(move_multiplier)       
+                break;       
+            case 65:  // если нажата клавиша A
                 //drawPlayer(current_player_x, current_player_y, current_player_angle - move_multiplier);
                 current_player_angle -= move_multiplier;
                 break;
-            case 38:   // если нажата клавиша вверх
-                moveToAngle(move_multiplier)       
+            case 83:   // если нажата клавиша S
+                moveToAngle(-move_multiplier)
                 break;
-            case 39:   // если нажата клавиша вправо
+            case 68:   // если нажата клавиша D
                 //drawPlayer(current_player_x, current_player_y, current_player_angle + move_multiplier); 
                 current_player_angle += move_multiplier;
                 break;
-            case 40:   // если нажата клавиша вниз
-                moveToAngle(-move_multiplier)
-                break;
-            case 17:
-                player_sit_down = 1;
-                break;
-            case 16:
-                player_sit_down = 0;
+            case 17:   // если нажата клавиша CTRL 
+                playerSitDownAndStandUp();
                 break;
             };
+            function playerSitDownAndStandUp() { // плавное приседание и вставание игрока
+                console.log('player_sit_down = ' + player_sit_down);
+                let i = 0;
+                let timer;
+                switch(player_sit_down) {
+                case 1:
+                    i = 1.2;
+                    timer = setInterval(function(){ // вверх
+                            if (i >= 1.6) {
+                                clearInterval(timer);
+                            }
+                            else {
+                                i+=0.09;
+                                player_camera_height = i;
+                            }
+                        }, 30);
+                    player_sit_down = 0;
+                    break;
+                case 0:
+                    i = 1.6;
+                    timer = setInterval(function(){ // вверх
+                            if (i <= 1.2) {
+                                clearInterval(timer);
+                            }
+                            else {
+                                i-=0.09;
+                                player_camera_height = i;
+                            }
+                        }, 30);
+                    player_sit_down = 1;
+                };  
+            }
+
+
             function moveToAngle(_move_multiplier){ // движение игрока по направлению вгляда
                 let _current_player_x = current_player_x + 2 *_move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
                 let _current_player_y = current_player_y + 2 *_move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y 
