@@ -261,7 +261,14 @@
             map_canvas.addEventListener("mousedown", function (e) { // Обработчик нажатия мыши
                 current_player_x = e.pageX - this.offsetLeft;
                 current_player_y = e.pageY - this.offsetTop;
-                // drawPlayer(player_x, player_y, current_player_angle)
+                // если попали в стену - вылетаем в ближайшую не занятую точку
+                let b_current_player_x = Math.round(current_player_x);
+                let b_current_player_y = Math.round(current_player_y);
+                if (map_array[b_current_player_y][b_current_player_x].green != 255 && map_array[b_current_player_y][b_current_player_x].blue != 255) {
+                    let _clear_floor_point = searchClearFloor(current_player_x, current_player_y, Math.floor(map_canvas_width / 2));
+                    current_player_x = _clear_floor_point.x;
+                    current_player_y = _clear_floor_point.y;
+                }
             });
 
         // Перемещение игрока обычное 
