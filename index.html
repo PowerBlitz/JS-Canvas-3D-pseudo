@@ -57,7 +57,7 @@
         var crosshair_y = main_canvas_height/2; // прицел y координата
 
         
-
+        // Размеры canvas 2
         main_canvas.width = main_canvas_width;
         main_canvas.height = main_canvas_height;
         map_canvas.width = map_canvas_width;
@@ -66,7 +66,7 @@
         map_texture_canvas.height = map_texture_canvas_height;
 
 
-        // Переменные
+        // Глобальные переменные
         var map_img = new Image(); // карта
         var map_texture_img = new Image(); // текстуры карты
         var map_imageData; // Данные картинки (не сам image). Все данные о пикселях хранятся в массиве imageData.data
@@ -74,11 +74,15 @@
         var fov = 60; // Угол обзора в градусах
         var fov_rays_count = 300; // количество лучей в угле обзора
         var fov_rays_array = []; // длины этих лучей + цвета в точках упора
-        var width_multiplier = main_canvas_width / fov_rays_count; // множитель ширины картинки
-        var current_player_angle = 0; // текущее положение взгляда игрока
+        var width_multiplier = main_canvas_width / fov_rays_count; // множитель ширины картинки        
+        var move_multiplier = 1; // Множитель скорости движения игрока
+        var turn_multiplier = 2; // Множитель скорости поворота игрока
+        var player_radius = 3; // Радиус игрока (пока что квадратный)
+
+        // Переменные, меняющиеся в процессе:
+        var current_player_angle = 0; // текущее положение взгляда игрока  
         var current_player_x = 100; // текущее положение игрока X
         var current_player_y = 100; // текущее положение игрока Y
-        var move_multiplier = 2; // Множитель скорости движения и поворота игрока
         var player_sit_down = 0; // 1 = игрок сидит, 0 - стоит
         var player_camera_height = 1.6; // высота камеры от земли. Стоя 1.6, сидя 1.2     
         var player_move_f = 0; // 0 - игрок стоит, 1 - движется вперед
@@ -128,8 +132,7 @@
             current_player_y = player_y;
             map_ct.clearRect(0, 0, map_canvas_width, map_canvas_height); // стираем холст
             map_ct.drawImage(map_img, 0, 0); // рисуем карту
-            // рисуем игрока           
-            player_radius = 3; 
+            // рисуем игрока            
             //map_ct.lineWidth = 0.5;
             //map_ct.strokeStyle = "red";
             //map_ct.fillStyle = "red";
@@ -247,35 +250,68 @@
                 // drawPlayer(player_x, player_y, current_player_angle)
             });
 
-        // Перемещение игрока (нажатия клавиш)
-        function movePlayer(e)
-        {
+        // Перемещение игрока обычное 
+        function movePlayer() {
+            if (player_move_f !=0) { // W
+                    moveToAngle(move_multiplier);
+                } 
+            if (player_turn_l !=0) { // A
+                current_player_angle -= turn_multiplier;
+            }
+            if (player_move_b !=0) { // S
+                    moveToAngle(-move_multiplier);
+                } 
+            if (player_turn_r !=0) { // D
+                current_player_angle += turn_multiplier;
+            } 
+            function moveToAngle(_move_multiplier){ // движение игрока по направлению вгляда
+                let _current_player_x = current_player_x + _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
+                let _current_player_y = current_player_y + _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y 
+                if ( 
+                    map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].green == 255 && map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].blue == 255 &&
+                    map_array[Math.ceil(current_player_y + player_radius)][Math.ceil(current_player_x + player_radius)].green == 255 && map_array[Math.ceil(current_player_y + player_radius)][Math.ceil(current_player_x + player_radius)].blue == 255 &&
+                    map_array[Math.ceil(current_player_y - player_radius)][Math.ceil(current_player_x - player_radius)].green == 255 && map_array[Math.ceil(current_player_y - player_radius)][Math.ceil(current_player_x - player_radius)].blue == 255
+                    ) 
+                {
+                    current_player_x = _current_player_x;
+                    current_player_y = _current_player_y;                 
+                }   
+                else {
+                    current_player_x = current_player_x - _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); 
+                    current_player_y = current_player_y - _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180));       
+                } 
+            }
+
+         };      
+
+
+        // Нажатия клавиш
+        function keysDown(e) {
             //console.log(e.keyCode);
-            switch(e.keyCode){    
-            case 87:   // если нажата клавиша W             
-                moveToAngle(move_multiplier)       
+            switch(e.keyCode) {    
+            case 87:   // если нажата клавиша W  
+                player_move_f = 1;               
                 break;       
             case 65:  // если нажата клавиша A
-                //drawPlayer(current_player_x, current_player_y, current_player_angle - move_multiplier);
-                current_player_angle -= move_multiplier;
+                player_turn_l = 1;
                 break;
             case 83:   // если нажата клавиша S
-                moveToAngle(-move_multiplier)
+                player_move_b = 1;
                 break;
             case 68:   // если нажата клавиша D
-                //drawPlayer(current_player_x, current_player_y, current_player_angle + move_multiplier); 
-                current_player_angle += move_multiplier;
+                player_turn_r = 1;
                 break;
             case 17:   // если нажата клавиша CTRL 
+                //player_sit_down = 1;
                 playerSitDownAndStandUp();
                 break;
-            };
-            function playerSitDownAndStandUp() { // плавное приседание и вставание игрока
-                console.log('player_sit_down = ' + player_sit_down);
-                let i = 0;
+            }
+            function playerSitDownAndStandUp() { // плавное приседание игрока
+                //console.log('player_sit_down = ' + player_sit_down);
+                let i;
                 let timer;
-                switch(player_sit_down) {
-                case 1:
+                switch(player_sit_down) {    
+                    case 1:   // если нажата клавиша W  
                     i = 1.2;
                     timer = setInterval(function(){ // вверх
                             if (i >= 1.6) {
@@ -285,10 +321,10 @@
                                 i+=0.09;
                                 player_camera_height = i;
                             }
-                        }, 30);
-                    player_sit_down = 0;
-                    break;
-                case 0:
+                        }, 30);  
+                        player_sit_down = 0;            
+                    break;    
+                    case 0:
                     i = 1.6;
                     timer = setInterval(function(){ // вверх
                             if (i <= 1.2) {
@@ -300,27 +336,36 @@
                             }
                         }, 30);
                     player_sit_down = 1;
+                    break;
                 };  
-            }
-
-
-            function moveToAngle(_move_multiplier){ // движение игрока по направлению вгляда
-                let _current_player_x = current_player_x + 2 *_move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по X
-                let _current_player_y = current_player_y + 2 *_move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); // координиата перемещения на move_multiplier единиц по Y 
-                if ( map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].green == 255 && map_array[Math.floor(_current_player_y)][Math.floor(_current_player_x)].blue == 255 ) 
-                {
-                    current_player_x = _current_player_x;
-                    current_player_y = _current_player_y;
-                    //drawPlayer(to_x, to_y, current_player_angle);                   
-                }   
-                else {
-                    current_player_x = current_player_x - _move_multiplier*Math.cos(current_player_angle * (Math.PI / 180)); 
-                    current_player_y = current_player_y - _move_multiplier*Math.sin(current_player_angle * (Math.PI / 180)); 
-                    //drawPlayer(to_x, to_y, current_player_angle);       
-                }   
+            };        
+        };
+        // Отпускание клавиш
+        function keysUp(e) {
+            //console.log(e.keyCode);
+            switch(e.keyCode){    
+            case 87:   // если нажата клавиша W  
+                player_move_f = 0;               
+                break;       
+            case 65:  // если нажата клавиша A
+                player_turn_l = 0;
+                break;
+            case 83:   // если нажата клавиша S
+                player_move_b = 0;
+                break;
+            case 68:  // если нажата клавиша D
+                player_turn_r = 0;
+                break;
             }
         };
-        addEventListener("keydown", movePlayer);
+           
+        
+
+
+        
+
+        addEventListener("keydown", keysDown);
+        addEventListener("keyup", keysUp);
 
 
 
@@ -332,7 +377,8 @@
            
             // Тут вызываем функции отрисовок:
 
-              drawPlayer(current_player_x, current_player_y, current_player_angle);
+            movePlayer();
+            drawPlayer(current_player_x, current_player_y, current_player_angle);
 
 
             ///if (progress < 10000) {
