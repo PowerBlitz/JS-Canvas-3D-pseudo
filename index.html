@@ -147,7 +147,8 @@
                         red = wall_texture_imageData.data[i]; // получаем компоненту красного цвета 
                         green = wall_texture_imageData.data[i + 1];  // получаем компоненту зеленого цвета
                         blue = wall_texture_imageData.data[i + 2];   // получаем компоненту синего цвета 
-                        wall_texture_array[y][x] = ({ red, green, blue });
+                        alpha = wall_texture_imageData.data[i + 3]; // альфаканал
+                        wall_texture_array[y][x] = ({ red, green, blue, alpha });
                         i+=4;
                     }
                 }
@@ -167,6 +168,11 @@
             }
         })();
     
+        // Получение части текстуры (полоса) + пробуем методы поворота
+        function getWallTexturePart() {
+
+        }
+
         function tst() { // ТЕСТ
             var texture_canvas = document.getElementById("texture");
             var texture_ct = texture_canvas.getContext("2d");
@@ -174,23 +180,28 @@
             texture_canvas.width = wall_texture_size_x;
             texture_canvas.height = wall_texture_size_y;
             //console.log(texture_imageData.data);
-            let _index = 5;
+            let _index = 1;
+            var result = [];
             let i = 0;
                 for (y = 0; y < wall_texture_size_y; y++) {
-                    for (x = 0; x < wall_texture_size_x; x++) {
+                    result[y] = [];
+                    for (x = 0; x < wall_texture_size_x; x++) {                       
                         red = wall_texture_indexes_array[_index].texture[y][x].red; // получаем компоненту красного цвета 
                         green = wall_texture_indexes_array[_index].texture[y][x].green;  // получаем компоненту зеленого цвета 
                         blue = wall_texture_indexes_array[_index].texture[y][x].blue;   // получаем компоненту синего цвета  
+                        alpha = wall_texture_indexes_array[_index].texture[y][x].alpha; // альфаканал
+                        result[y][x] = {red, green, blue, alpha};
                         grayscale = red * 0.3 + green * 0.59 + blue * 0.11; // получаем серый цвет
                         texture_imageData.data[i] = red;  
                         texture_imageData.data[i + 1] = green;
                         texture_imageData.data[i + 2] = blue;
-                        texture_imageData.data[i + 3] = 999; // АЛЬФАКАНАЛ !!!
+                        texture_imageData.data[i + 3] = alpha; 
                         i+=4;
                     }
                 }
             //console.log(texture_imageData.data);
             texture_ct.putImageData(texture_imageData,0, 0);
+            return result;
         }
         
         // Рисование игрока (и угол в градусах, 0 - вправо):
@@ -312,7 +323,7 @@
         }
 
         // Перемещение игрока (телепорт по карте)
-            map_canvas.addEventListener("mouseclick", function (e) { // Обработчик нажатия мыши
+            map_canvas.addEventListener("mousedown", function (e) { // Обработчик нажатия мыши
                 current_player_x = e.pageX - this.offsetLeft;
                 current_player_y = e.pageY - this.offsetTop;
                 // возвращем из стены, если попали в неё
