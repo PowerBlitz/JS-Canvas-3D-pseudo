@@ -20,7 +20,7 @@
             Текстуры
         </canvas>
         <br>
-        <canvas id="texture" style="border: 1px solid #000; filter:blur(0px); width:64px; height:64px">
+        <canvas id="texture" style="border: 1px solid #000; filter:blur(0px);">
             ТекстурА
         </canvas>
     </body>
@@ -148,17 +148,9 @@
                         green = wall_texture_imageData.data[i + 1];  // получаем компоненту зеленого цвета
                         blue = wall_texture_imageData.data[i + 2];   // получаем компоненту синего цвета 
                         wall_texture_array[y][x] = ({ red, green, blue });
-                        i++;
-
+                        i+=4;
                     }
                 }
-                // for (let _i = 0; _i < (wall_texture_canvas_height * wall_texture_canvas_width); _i++) {
-                //         red = wall_texture_imageData.data[_i]; // получаем компоненту красного цвета 
-                //         green = wall_texture_imageData.data[_i + 1];  // получаем компоненту зеленого цвета 
-                //         blue = wall_texture_imageData.data[_i + 2];   // получаем компоненту синего цвета 
-                //         wall_texture_array[_i] = ( {red, green, blue } );
-                //         i+=4;
-                // }
             }
             function indexMapTexture() { // Индексация текстур карты
                 let y = 0;
@@ -171,53 +163,34 @@
                             wall_texture_indexes_array[t].texture[y][x] = wall_texture_array[y][x + (wall_texture_size_x * t)];
                         }
                     }
-                }
-                
-                
-                // fov_rays_array[Math.round(fov_rays_count/2)].player_angle_color.texture_index = 6-193-10 = зеленый
-                // for (let t=0; t < wall_texture_count; t++) {
-                //     for (let i = t * wall_texture_size_x * wall_texture_size_y; i < (t + 1) * wall_texture_size_x * wall_texture_size_y; i++) {
-                //         wall_texture_indexes_array[t].texture.push(wall_texture_array[i]);
-                //     } 
-                // }
-                
+                }  
             }
         })();
-    var texture_canvas = document.getElementById("texture");
-    var texture_ct = texture_canvas.getContext("2d");
-    var texture_imageData = texture_ct.createImageData(64, 64);
+    
         function tst() { // ТЕСТ
-            
-            
-            console.log(texture_imageData.data);
-            var i = 0;
+            var texture_canvas = document.getElementById("texture");
+            var texture_ct = texture_canvas.getContext("2d");
+            var texture_imageData = texture_ct.createImageData(wall_texture_size_x, wall_texture_size_y);
+            texture_canvas.width = wall_texture_size_x;
+            texture_canvas.height = wall_texture_size_y;
+            //console.log(texture_imageData.data);
+            let _index = 5;
+            let i = 0;
                 for (y = 0; y < wall_texture_size_y; y++) {
                     for (x = 0; x < wall_texture_size_x; x++) {
-                        red = wall_texture_indexes_array[0].texture[y][x].red; // получаем компоненту красного цвета 
-                        green = wall_texture_indexes_array[0].texture[y][x].green;  // получаем компоненту зеленого цвета 
-                        blue = wall_texture_indexes_array[0].texture[y][x].blue;   // получаем компоненту синего цвета  
+                        red = wall_texture_indexes_array[_index].texture[y][x].red; // получаем компоненту красного цвета 
+                        green = wall_texture_indexes_array[_index].texture[y][x].green;  // получаем компоненту зеленого цвета 
+                        blue = wall_texture_indexes_array[_index].texture[y][x].blue;   // получаем компоненту синего цвета  
                         grayscale = red * 0.3 + green * 0.59 + blue * 0.11; // получаем серый цвет
-                        texture_imageData.data[i] = grayscale;  
-                        texture_imageData.data[i + 1] = grayscale;
-                        texture_imageData.data[i + 2] = grayscale;
-                        //texture_imageData.data[i] = 0;
-                        //texture_imageData.data[i + 1] = 255;
-                        //texture_imageData.data[i + 2] = 255;
+                        texture_imageData.data[i] = red;  
+                        texture_imageData.data[i + 1] = green;
+                        texture_imageData.data[i + 2] = blue;
+                        texture_imageData.data[i + 3] = 999; // АЛЬФАКАНАЛ !!!
                         i+=4;
                     }
                 }
-            console.log(texture_imageData.data);
-            // for (let i = 0; i < wall_texture_indexes_array[0].texture.length; i++) {
-            //     red = wall_texture_indexes_array[0].texture[i].red; // получаем компоненту красного цвета 
-            //     green = wall_texture_indexes_array[0].texture[i].green;  // получаем компоненту зеленого цвета 
-            //     blue = wall_texture_indexes_array[0].texture[i].blue;   // получаем компоненту синего цвета 
-            //     grayscale = red * 0.3 + green * 0.59 + blue * 0.11; // получаем серый фон
-            //     texture_imageData.data[4*i] = grayscale;  // установка серого цвета
-            //     texture_imageData.data[4*i + 1] = grayscale;
-            //     texture_imageData.data[4*i + 2] = grayscale;
-            // } 
-            //texture_ct.clearRect(0, 0, 9999, 9999);
-            texture_ct.putImageData(texture_imageData, 0, 0);
+            //console.log(texture_imageData.data);
+            texture_ct.putImageData(texture_imageData,0, 0);
         }
         
         // Рисование игрока (и угол в градусах, 0 - вправо):
