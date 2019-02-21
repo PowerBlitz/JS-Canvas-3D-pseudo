@@ -17,7 +17,11 @@
         </canvas>
         <br>
         <canvas id="mapTextureCanvas" style="border: 1px solid #000; filter:blur(0px)">
-            Карта
+            Текстуры
+        </canvas>
+        <br>
+        <canvas id="texture" style="border: 1px solid #000; filter:blur(0px); width:64px; height:64px">
+            ТекстурА
         </canvas>
     </body>
 
@@ -36,8 +40,8 @@
         var main_ct = main_canvas.getContext("2d");
         var map_canvas = document.getElementById("mapCanvas");
         var map_ct= map_canvas.getContext("2d");
-        var map_texture_canvas = document.getElementById("mapTextureCanvas");
-        var map_texture_ct = map_texture_canvas.getContext("2d");
+        var wall_texture_canvas = document.getElementById("mapTextureCanvas");
+        var wall_texture_ct = wall_texture_canvas.getContext("2d");
 
         // Размеры canvas
         var main_canvas_width = 600;
@@ -46,11 +50,11 @@
         var map_canvas_height = 512;
 
         // Размеры текстур:
-        var map_texture_size_x = 64; // размер текстуры по x
-        var map_texture_size_y = map_texture_size_x; // размер текстуры по y
-        var map_texture_count = 6; // количество текстур
-        var map_texture_canvas_width = map_texture_count * map_texture_size_y;
-        var map_texture_canvas_height = map_texture_size_x;
+        var wall_texture_size_x = 64; // размер текстуры по x
+        var wall_texture_size_y = wall_texture_size_x; // размер текстуры по y
+        var wall_texture_count = 6; // количество текстур
+        var wall_texture_canvas_width = wall_texture_count * wall_texture_size_y;
+        var wall_texture_canvas_height = wall_texture_size_x;
 
         //Прицел:
         var crosshair_x = main_canvas_width/2; // Прицел x координата
@@ -62,15 +66,23 @@
         main_canvas.height = main_canvas_height;
         map_canvas.width = map_canvas_width;
         map_canvas.height = map_canvas_height;
-        map_texture_canvas.width = map_texture_canvas_width;
-        map_texture_canvas.height = map_texture_canvas_height;
+        wall_texture_canvas.width = wall_texture_canvas_width;
+        wall_texture_canvas.height = wall_texture_canvas_height;
 
 
         // Глобальные переменные
         var map_img = new Image(); // карта
-        var map_texture_img = new Image(); // текстуры карты
+        var wall_texture_img = new Image(); // текстуры карты  
         var map_imageData; // Данные картинки (не сам image). Все данные о пикселях хранятся в массиве imageData.data
         var map_array = []; // массив карты
+        var wall_texture_array = []; // массив текстур карты
+        var wall_texture_indexes_array = [ 
+                {texture_index:'6-193-10', texture: []}, 
+                {texture_index:'30-136-229', texture: []}, 
+                {texture_index:'193-28-6', texture: []}, 
+                {texture_index:'169-218-38', texture: []}, 
+                {texture_index:'0-72-36', texture: []}, 
+                {texture_index:'255-127-39', texture: []} ]; // Захардкоженные индексы текстур
         var fov = 60; // Угол обзора в градусах
         var fov_rays_count = 300; // количество лучей в угле обзора
         var fov_rays_array = []; // длины этих лучей + цвета в точках упора
@@ -90,7 +102,6 @@
         var player_turn_r = 0; // 0 - игрок стоит, 1 - поворачивает вправо
         var player_turn_l = 0; // 0 - игрок стоит, 1 - поворачивает влево
 
-
         // Рисование карты + подгрузка текстур
         (function initLevel() {
         
@@ -100,17 +111,21 @@
                 readMapToArray();               
                 requestAnimationFrame(step); // Запуск первого кадра анимации
             }; 
-            map_texture_img.src = "map_texture.png";
-            map_texture_img.onload = function() {              
-                map_texture_ct.drawImage(map_texture_img, 0, 0);
+            wall_texture_img.src = "wall_texture.png";
+            wall_texture_img.onload = function() {              
+                wall_texture_ct.drawImage(wall_texture_img, 0, 0);
+                readMapTextureToArray();
+                indexMapTexture();
+                tst();
                 //var articleDiv = document.querySelector("body");
                 //var elem = document.createElement("div");
                 //elem.textContent = "Привет мир";
                 //articleDiv.appendChild(elem);
             };
+            
             function readMapToArray() { // Считаем карту в массив:
                 var map_imageData = map_ct.getImageData(0, 0, map_canvas_width, map_canvas_height);
-                var i = 0;
+                let i = 0;
                 for (var y = 0; y < map_canvas_height; y++) {
                     map_array[y] = [];
                     for (var x = 0; x < map_canvas_width; x++) {
@@ -123,12 +138,87 @@
                     }
                 }
             }
-            function mapTexturesIndexation() { // Индексация текстур карты
-                // fov_rays_array[0].player_angle_color.texture_index = 6-193-10 = зеленый
-                // for (let i = 0; i = < )
+            function readMapTextureToArray() { // Считывание текстур в массив (двумерный)         
+                let wall_texture_imageData = wall_texture_ct.getImageData(0, 0, wall_texture_canvas_width, wall_texture_canvas_height);
+                let i = 0;
+                for (y = 0; y< wall_texture_canvas_height; y++) {
+                    wall_texture_array[y] = [];
+                    for (x = 0; x< wall_texture_canvas_width; x++) {
+                        red = wall_texture_imageData.data[i]; // получаем компоненту красного цвета 
+                        green = wall_texture_imageData.data[i + 1];  // получаем компоненту зеленого цвета
+                        blue = wall_texture_imageData.data[i + 2];   // получаем компоненту синего цвета 
+                        wall_texture_array[y][x] = ({ red, green, blue });
+                        i++;
+
+                    }
+                }
+                // for (let _i = 0; _i < (wall_texture_canvas_height * wall_texture_canvas_width); _i++) {
+                //         red = wall_texture_imageData.data[_i]; // получаем компоненту красного цвета 
+                //         green = wall_texture_imageData.data[_i + 1];  // получаем компоненту зеленого цвета 
+                //         blue = wall_texture_imageData.data[_i + 2];   // получаем компоненту синего цвета 
+                //         wall_texture_array[_i] = ( {red, green, blue } );
+                //         i+=4;
+                // }
+            }
+            function indexMapTexture() { // Индексация текстур карты
+                let y = 0;
+                let x = 0;
+                let t = 0;
+                for (t = 0; t < wall_texture_count; t++) {
+                    for (y = 0; y < wall_texture_size_y; y++) {
+                        wall_texture_indexes_array[t].texture[y] = [];
+                        for (x = 0; x < wall_texture_size_x; x++) {
+                            wall_texture_indexes_array[t].texture[y][x] = wall_texture_array[y][x + (wall_texture_size_x * t)];
+                        }
+                    }
+                }
+                
+                
+                // fov_rays_array[Math.round(fov_rays_count/2)].player_angle_color.texture_index = 6-193-10 = зеленый
+                // for (let t=0; t < wall_texture_count; t++) {
+                //     for (let i = t * wall_texture_size_x * wall_texture_size_y; i < (t + 1) * wall_texture_size_x * wall_texture_size_y; i++) {
+                //         wall_texture_indexes_array[t].texture.push(wall_texture_array[i]);
+                //     } 
+                // }
+                
             }
         })();
-
+    var texture_canvas = document.getElementById("texture");
+    var texture_ct = texture_canvas.getContext("2d");
+    var texture_imageData = texture_ct.createImageData(64, 64);
+        function tst() { // ТЕСТ
+            
+            
+            console.log(texture_imageData.data);
+            var i = 0;
+                for (y = 0; y < wall_texture_size_y; y++) {
+                    for (x = 0; x < wall_texture_size_x; x++) {
+                        red = wall_texture_indexes_array[0].texture[y][x].red; // получаем компоненту красного цвета 
+                        green = wall_texture_indexes_array[0].texture[y][x].green;  // получаем компоненту зеленого цвета 
+                        blue = wall_texture_indexes_array[0].texture[y][x].blue;   // получаем компоненту синего цвета  
+                        grayscale = red * 0.3 + green * 0.59 + blue * 0.11; // получаем серый цвет
+                        texture_imageData.data[i] = grayscale;  
+                        texture_imageData.data[i + 1] = grayscale;
+                        texture_imageData.data[i + 2] = grayscale;
+                        //texture_imageData.data[i] = 0;
+                        //texture_imageData.data[i + 1] = 255;
+                        //texture_imageData.data[i + 2] = 255;
+                        i+=4;
+                    }
+                }
+            console.log(texture_imageData.data);
+            // for (let i = 0; i < wall_texture_indexes_array[0].texture.length; i++) {
+            //     red = wall_texture_indexes_array[0].texture[i].red; // получаем компоненту красного цвета 
+            //     green = wall_texture_indexes_array[0].texture[i].green;  // получаем компоненту зеленого цвета 
+            //     blue = wall_texture_indexes_array[0].texture[i].blue;   // получаем компоненту синего цвета 
+            //     grayscale = red * 0.3 + green * 0.59 + blue * 0.11; // получаем серый фон
+            //     texture_imageData.data[4*i] = grayscale;  // установка серого цвета
+            //     texture_imageData.data[4*i + 1] = grayscale;
+            //     texture_imageData.data[4*i + 2] = grayscale;
+            // } 
+            //texture_ct.clearRect(0, 0, 9999, 9999);
+            texture_ct.putImageData(texture_imageData, 0, 0);
+        }
         
         // Рисование игрока (и угол в градусах, 0 - вправо):
         function drawPlayer(player_x, player_y, player_angle) {
@@ -249,7 +339,7 @@
         }
 
         // Перемещение игрока (телепорт по карте)
-            map_canvas.addEventListener("mousedown", function (e) { // Обработчик нажатия мыши
+            map_canvas.addEventListener("mouseclick", function (e) { // Обработчик нажатия мыши
                 current_player_x = e.pageX - this.offsetLeft;
                 current_player_y = e.pageY - this.offsetTop;
                 // возвращем из стены, если попали в неё
@@ -356,7 +446,7 @@
                     break;    
                     case 0:
                     i = 1.6;
-                    timer = setInterval(function(){ // вверх
+                    timer = setInterval(function(){ // вниз
                             if (i <= 1.2) {
                                 clearInterval(timer);
                             }
